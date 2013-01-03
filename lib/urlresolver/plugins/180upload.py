@@ -21,6 +21,7 @@ from urlresolver.plugnplay.interfaces import UrlResolver
 from urlresolver.plugnplay.interfaces import PluginSettings
 from urlresolver.plugnplay import Plugin
 import re
+import urlparse
 import urllib2
 from urlresolver import common
 import os
@@ -50,7 +51,13 @@ class OneeightyuploadResolver(Plugin, UrlResolver, PluginSettings):
         if not match:
             print 'could not find video'
             return False
-        return match.group(1)
+        s = match.group(1)
+        if isinstance(s, unicode):
+            s = s.encode('utf-8', 'ignore')
+        scheme, netloc, path, qs, anchor = urlparse.urlsplit(s)
+        path = urllib2.quote(path, '/%')
+        qs = urllib2.quote(qs, ':&=')
+        return urlparse.urlunsplit((scheme, netloc, path, qs, anchor))
     
 
     def get_url(self, host, media_id):
@@ -61,7 +68,7 @@ class OneeightyuploadResolver(Plugin, UrlResolver, PluginSettings):
     def get_host_and_id(self, url):
         print '180upload: in get_host_and_id %s' % (url)
 
-        r = re.search('http://(.+?)/embed-([\w]+)-', url)
+        r = re.search('http://(.+?)/embed-(.+?).html', url)
         if r:
             return r.groups()
         else:
