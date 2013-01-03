@@ -1,6 +1,6 @@
 """
     urlresolver XBMC Addon
-    Copyright (C) 2011 t0mm0
+    Copyright (C) 2011-2013 t0mm0, Bagira
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,17 +15,17 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 from t0mm0.common.net import Net
 from urlresolver.plugnplay.interfaces import UrlResolver
 from urlresolver.plugnplay.interfaces import PluginSettings
 from urlresolver.plugnplay import Plugin
 import urllib2
 from urlresolver import common
-from lib import jsunpack
 
 # Custom imports
 import re
-
+from lib import jsunpack
 
 class UploadcResolver(Plugin, UrlResolver, PluginSettings):
     implements = [UrlResolver, PluginSettings]
@@ -35,39 +35,32 @@ class UploadcResolver(Plugin, UrlResolver, PluginSettings):
         p = self.get_setting('priority') or 100
         self.priority = int(p)
         self.net = Net()
-        # modified by mscreations. uploadc now needs the filename after the media id so make sure we match that
-        self.pattern = 'http://((?:www.)?uploadc.com)/([0-9a-zA-Z]+/[0-9a-zA-Z/._]+)'
+        self.pattern = 'http://((?:www.)?uploadc.com)/([0-9a-zA-Z\-\.]+)'
 
     def get_media_url(self, host, media_id):
         web_url = self.get_url(host, media_id)
-        
-        #get html
+
+        """ Human Verification """
         try:
             html = self.net.http_GET(web_url).content
         except urllib2.URLError, e:
             common.addon.log_error(self.name + ': got http error %d fetching %s' %
-                                    (e.code, api_url))
+                                    (e.code, web_url))
 
-        #send all form values
-        sPattern = '<input.*?name="([^"]+)".*?value=([^>]+)>'
-        r = re.findall(sPattern, html)
-        data = {}
+        """ Parsing HTML """
+        sPattern = "<div[^>]*?id=\"player_cont\">.*?<script type='text/javascript'>eval.*?return p}\((.*?)</script>"
+        r = re.search(sPattern, html, re.DOTALL + re.IGNORECASE)
         if r:
-            for match in r:
-                name = match[0]
-                value = match[1].replace('"','')
-                data[name] = value
-
-            html = self.net.http_POST(web_url, data).content
+            sJavascript = r.group(1)
+            sUnpacked = jsunpack.unpack(sJavascript)
+            sPattern = 'src="([^"]+?)"'
+            r = re.search(sPattern, sUnpacked)
+            if r:
+                return r.group(1)
+            else:
+                common.addon.log_error(self.name + ": no video url found in %s" % sUnpacked)
         else:
-            common.addon.log_error(self.name + ': no fields found')
-            return False
-            
-        # modified by mscreations. get the file url from the returned javascript
-        match = re.search("addVariable[(]'file','(.+?)'[)]", html, re.DOTALL + re.IGNORECASE)
-        if match:
-            return match.group(1)
-        
+            common.addon.log_error(self.name + ': no javascript pattern found')
         return False
 
     def get_url(self, host, media_id):
