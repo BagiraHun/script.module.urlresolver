@@ -1,6 +1,6 @@
 """
-    urlresolver XBMC Addon
-    Copyright (C) 2012 Bagira
+    flashstream urlresolver plugin
+    Copyright (C) 2013 Bagira
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,7 +55,8 @@ class FlashstreamResolver(Plugin, UrlResolver, PluginSettings):
         if r:
             sJavascript = r.group(1)
             sUnpacked = jsunpack.unpack(sJavascript)
-            sPattern = '\'file\',\'([^\']+?)\''
+            #sPattern = '\'file\',\'([^\']+?)\''
+            sPattern = '<param name="src"0="(.*?)"'
             r = re.search(sPattern, sUnpacked)
             if r:
                 return r.group(1)

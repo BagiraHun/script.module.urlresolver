@@ -1,5 +1,5 @@
 """
-    urlresolver XBMC Addon
+    movshare urlresolver plugin
     Copyright (C) 2011 t0mm0
 
     This program is free software: you can redistribute it and/or modify
@@ -28,6 +28,7 @@ import urllib2
 from urlresolver.plugnplay.interfaces import UrlResolver
 from urlresolver.plugnplay.interfaces import PluginSettings
 from urlresolver.plugnplay import Plugin
+from urlresolver import common
 
 class MovshareResolver(Plugin, UrlResolver, PluginSettings):
     implements = [UrlResolver, PluginSettings]
@@ -50,21 +51,34 @@ class MovshareResolver(Plugin, UrlResolver, PluginSettings):
                                   (e.code, web_url))
             return False
                
-        """movshare can do both flv and avi. There is no way I know before hand
-        if the url going to be a flv or avi. So the first regex tries to find 
-        the avi file, if nothing is present, it will check for the flv file.
-        "param name="src" is for avi
-        "flashvars.file=" is for flv
-        """
         r = re.search('<param name="src" value="(.+?)"', html)
-        if not r:
-            r = re.search('flashvars.file="(.+?)"', html)
         if r:
             stream_url = r.group(1)
         else:
-            common.addon.log_error('movshare: stream url not found')
-            return False
-                                    
+            message ='movshare: 1st attempt at finding the stream_url failed'
+            common.addon.log_debug(message)
+            r = re.search('flashvars.filekey="(.+)"', html)
+            if r:
+                file_key = r.group(1)
+                player_url = 'http://www.movshare.net/api/player.api.php?user=undefined&key='+file_key+'&pass=undefined&codes=1&file='+media_id
+                try:
+                    html = self.net.http_GET(player_url).content
+                except urllib2.URLError, e:
+                    common.addon.log_error('movshare: got http error %d fetching %s' %
+                                        (e.code, web_url))
+                    return False
+                r = re.search('url=(.+?)&', html)
+                if r:
+                    stream_url = r.group(1)
+                else:
+                    message ='movshare: attempt at finding the stream_url failed'
+                    common.addon.log_debug(message)
+                    return False
+            else:
+                message ='movshare: attempt at finding the filekey failed'
+                common.addon.log_debug(message)
+                return False
+
         return stream_url
         
 
@@ -74,6 +88,8 @@ class MovshareResolver(Plugin, UrlResolver, PluginSettings):
         
     def get_host_and_id(self, url):
         r = re.search('//(.+?)/video/([0-9a-z]+)', url)
+        if not r:
+            r = re.search('//(.+?)/embed.php\?v=([^&]+?)&', url)
         if r:
             return r.groups()
         else:
@@ -81,5 +97,5 @@ class MovshareResolver(Plugin, UrlResolver, PluginSettings):
 
 
     def valid_url(self, url, host):
-        return re.match('http://(?:www.)?movshare.net/video/',
+        return re.match('http://(?:www.|embed.)?movshare.net/(?:embed.php|video/)',
                         url) or 'movshare' in host

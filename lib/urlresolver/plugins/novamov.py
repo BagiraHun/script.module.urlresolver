@@ -1,5 +1,5 @@
 """
-    urlresolver XBMC Addon
+    novamov urlresolver plugin
     Copyright (C) 2011 t0mm0
 
     This program is free software: you can redistribute it and/or modify
@@ -99,6 +99,5 @@ class NovamovResolver(Plugin, UrlResolver, PluginSettings):
 
 
     def valid_url(self, url, host):
-        return re.match('http://(www.|embed.)?novamov.com/(video/|embed.php\?)' +
+        return re.match('http://(?:www.|embed.)?novamov.com/(video/|embed.php\?)' +
                         '(?:[0-9a-z]+|width)', url) or 'novamov' in host
-

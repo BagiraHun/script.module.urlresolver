@@ -1,5 +1,5 @@
 """
-    urlresolver XBMC Addon
+    nowvideo urlresolver plugin
     Copyright (C) 2013 Bagira
 
     This program is free software: you can redistribute it and/or modify

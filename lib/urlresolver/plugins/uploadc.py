@@ -1,6 +1,6 @@
 """
-    urlresolver XBMC Addon
-    Copyright (C) 2011-2013 t0mm0, Bagira
+    uploadc urlresolver plugin
+    Copyright (C) 2011 t0mm0
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
