@@ -53,7 +53,7 @@ class ZixshareResolver(Plugin, UrlResolver, PluginSettings):
         r = re.search(sPattern, html, re.IGNORECASE)
         if r:
             web_url = r.group(1)
-            html = self.net.http_GET(web_url).content
+            html = self.net.http_GET(web_url, headers = {'Referer': web_url}).content
             sPattern = 'clip:[^u]+url: \'([^\']+)\''
             r = re.search(sPattern, html, re.DOTALL)
             if r:
@@ -76,4 +76,4 @@ class ZixshareResolver(Plugin, UrlResolver, PluginSettings):
             return False
 
     def valid_url(self, url, host):
-        return re.match('http://(www.)?zixshare.com/files/([0-9a-z\.-]+)', url) or self.name in host
+        return re.match('http://(www.)?zixshare.com/files/([0-9a-z\.-]+)', url, re.IGNORECASE) or self.name in host
