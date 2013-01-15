@@ -41,7 +41,7 @@ class NowvideoResolver(Plugin, UrlResolver, PluginSettings):
             self.net.http_HEAD(web_url)
             html = self.net.http_GET(web_url).content
         except urllib2.URLError, e:
-            common.addon.log_error(self.resolver_host + ': got http error %d fetching %s' %
+            common.addon.log_error(self.name + ': got http error %d fetching %s' %
                                   (e.code, web_url))
             return False
         ''' Parsing HTML '''

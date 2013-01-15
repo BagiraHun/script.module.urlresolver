@@ -1,5 +1,5 @@
 """
-    flashstream urlresolver plugin
+    muchshare urlresolver plugin
     Copyright (C) 2013 Bagira
 
     This program is free software: you can redistribute it and/or modify
@@ -27,27 +27,22 @@ from urlresolver import common
 import re
 from lib import jsunpack
 
-class FlashstreamResolver(Plugin, UrlResolver, PluginSettings):
+class MuchshareResolver(Plugin, UrlResolver, PluginSettings):
     implements = [UrlResolver, PluginSettings]
-    name = "flashstream"
+    name = "muchshare"
 
     def __init__(self):
         p = self.get_setting('priority') or 100
         self.priority = int(p)
         self.net = Net()
-        self.resolver_host = "flashstream.in"
+        self.resolver_host = "muchshare.net"
 
     def get_media_url(self, host, media_id):
         web_url = self.get_url(host, media_id)
 
+
         """ Human Verification """
-        try:
-            self.net.http_HEAD(web_url)
-            html = self.net.http_GET(web_url).content
-        except urllib2.URLError, e:
-            common.addon.log_error(self.name + ': got http error %d fetching %s' %
-                                  (e.code, web_url))
-            return False
+        html = self.net.http_GET(web_url + "?play=1", headers = {'Referer': web_url}).content
 
         """ Parsing HTML """
         sPattern = "<div id=\"player_code\">.*?<script type='text/javascript'>eval.*?return p}\((.*?)</script>"
@@ -78,5 +73,5 @@ class FlashstreamResolver(Plugin, UrlResolver, PluginSettings):
             return False
 
     def valid_url(self, url, host):
-        return re.match('http://(www.)?flashstream.in/embed-([0-9a-z]+)', url) or self.name in host
+        return re.match('http://(www.)?muchshare.net/embed-([0-9a-z]+)', url, re.IGNORECASE) or self.name in host
 
