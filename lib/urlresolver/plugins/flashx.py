@@ -1,5 +1,5 @@
 """
-    urlresolver XBMC Addon
+    flashx urlresolver plugin
     Copyright (C) 2011 t0mm0
 
     This program is free software: you can redistribute it and/or modify
@@ -79,7 +79,5 @@ class FlashxResolver(Plugin, UrlResolver, PluginSettings):
         else:
             return False
 
-
     def valid_url(self, url, host):
-        print re.match(self.pattern, url) or self.name in host
         return re.match(self.pattern, url) or self.name in host
