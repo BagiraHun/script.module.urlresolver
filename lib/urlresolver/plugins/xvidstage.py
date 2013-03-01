@@ -56,11 +56,14 @@ class XvidstageResolver(Plugin, UrlResolver, PluginSettings):
         """ Parsing HTML """
         sPattern = "<div id=\"player_code\"><script type='text/javascript'>eval.*?return p}\((.*?)</script>"
         r = re.search(sPattern, html, re.DOTALL + re.IGNORECASE)
+        print r.groups()
         if r:
             sJavascript = r.group(1)
             sUnpacked = jsunpack.unpack(sJavascript)
-            sPattern = '<param name="src"0="(.*?)"'
+            print sUnpacked
+            sPattern = "'file','(.+?)'"#modded
             r = re.search(sPattern, sUnpacked)
+            print r.groups()
             if r:
                 return r.group(1)
             else:
