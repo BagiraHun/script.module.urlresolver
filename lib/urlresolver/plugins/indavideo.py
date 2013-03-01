@@ -26,14 +26,9 @@ import urllib2
 from urlresolver import common
 import os
 
-# Custom import
-import httplib
-from pyamf import remoting
-
 class IndavideoResolver(Plugin, UrlResolver, PluginSettings):
     implements = [UrlResolver, PluginSettings]
     name = "indavideo"
-
 
     def __init__(self):
         p = self.get_setting('priority') or 100
@@ -41,42 +36,14 @@ class IndavideoResolver(Plugin, UrlResolver, PluginSettings):
         self.net = Net()
 
     def get_media_url(self, host, media_id):
-        print 'indavideo: in get_media_url %s %s' % (host, media_id)
-        web_url = self.get_url(host, media_id)
-        html = self.net.http_GET(web_url).content
-
-        match = re.search('vID=([^&]+?)&', html,re.DOTALL)
-        if not match:
-            print 'could not find video'
-            return False
-        vID = match.group(1)
-
-        env = remoting.Envelope(amfVersion=3)
-        env.bodies.append(
-           (  "/1",
-              remoting.Request(
-                 target="player.playerHandler.getVideoData",
-                 body=[vID],
-                 envelope=env
-              )
-           )
-        )
-        conn = httplib.HTTPConnection("amfphp.indavideo.hu")
-        conn.request("POST", "/gateway.php", str(remoting.encode(env).read()),{'content-type': 'application/x-amf'})
-        response = conn.getresponse().read()
-        response = remoting.decode(response).bodies[0][1].body
-        conn.close()
-        return response['data']['video_file']
-
+        plugin = 'plugin://plugin.video.indavideo/?action=play_video&videoid=' +\
+                 media_id
+        return plugin
 
     def get_url(self, host, media_id):
-        print 'indavideo: in get_url %s %s' % (host, media_id)
         return 'http://indavideo.hu/video/%s' % media_id 
-        
-        
-    def get_host_and_id(self, url):
-        print 'indavideo: in get_host_and_id %s' % (url)
 
+    def get_host_and_id(self, url):
         r = re.search('http://(.+?)/video/([\w]+)', url)
         if r:
             return r.groups()
@@ -86,7 +53,6 @@ class IndavideoResolver(Plugin, UrlResolver, PluginSettings):
                 return r.groups()
             else:
                 return False
-
 
     def valid_url(self, url, host):
         return (re.match('http://(www.)?indavideo.hu/' +
