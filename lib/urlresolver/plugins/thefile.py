@@ -20,17 +20,19 @@ from t0mm0.common.net import Net
 from urlresolver.plugnplay.interfaces import UrlResolver
 from urlresolver.plugnplay.interfaces import PluginSettings
 from urlresolver.plugnplay import Plugin
-import urllib2
+import urllib2, os
 from urlresolver import common
 from lib import jsunpack
 import xbmcgui
 import re
 import time
 
+#SET ERROR_LOGO# THANKS TO VOINAGE, BSTRDMKR, ELDORADO
+error_logo = os.path.join(common.addon_path, 'resources', 'images', 'redx.png')
 
-class ZoouploadResolver(Plugin, UrlResolver, PluginSettings):
+class TheFileResolver(Plugin, UrlResolver, PluginSettings):
     implements = [UrlResolver, PluginSettings]
-    name = "zooupload"
+    name = "thefile"
 
     def __init__(self):
         p = self.get_setting('priority') or 100
@@ -39,15 +41,24 @@ class ZoouploadResolver(Plugin, UrlResolver, PluginSettings):
 
     def get_media_url(self, host, media_id):
         web_url = self.get_url(host, media_id)
-        html = self.net.http_GET(web_url).content
-        r = re.search("<script type='text/javascript'>(.+?)</script>",html,re.DOTALL)
-        if r:
-            js = jsunpack.unpack(r.group(1))
-            print js
-            r = re.search("'file','(.+?)'", js)
+        try:
+            html = self.net.http_GET(web_url).content
+            r = re.search('<script\stype=(?:"|\')text/javascript(?:"|\')>eval\(function\(p,a,c,k,e,[dr]\)(?!.+player_ads.+).+?</script>',html,re.DOTALL)
             if r:
-                return r.group(1)
-        return False
+                js = jsunpack.unpack(r.group(1))
+                r = re.search("'file','(.+?)'", js.replace('\\',''))
+                if r:
+                    return r.group(1)
+            raise Exception ('File Not Found or removed')
+        except urllib2.URLError, e:
+            common.addon.log_error(self.name + ': got http error %d fetching %s' %
+                                   (e.code, web_url))
+            common.addon.show_small_popup('Error','Http error: '+str(e), 8000, error_logo)
+            return self.unresolvable(code=3, msg=e)
+        except Exception, e:
+            common.addon.log('**** Thefile Error occured: %s' % e)
+            common.addon.show_small_popup(title='[B][COLOR white]THEFILE[/COLOR][/B]', msg='[COLOR red]%s[/COLOR]' % e, delay=5000, image=error_logo)
+            return self.unresolvable(code=0, msg=e)
 
     def get_url(self, host, media_id):
             return 'http://thefile.me/%s' % (media_id)
@@ -61,6 +72,7 @@ class ZoouploadResolver(Plugin, UrlResolver, PluginSettings):
 
 
     def valid_url(self, url, host):
+        if self.get_setting('enabled') == 'false': return False
         return re.match(r'http://(thefile).me/([0-9a-zA-Z]+)', url) or 'thefile' in host
 
 

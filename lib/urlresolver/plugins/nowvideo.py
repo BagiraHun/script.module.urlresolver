@@ -1,6 +1,6 @@
 """
-    nowvideo urlresolver plugin
-    Copyright (C) 2013 Bagira
+    urlresolver XBMC Addon
+    Copyright (C) 2011 t0mm0
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,13 +16,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import re
+import re, urllib, urllib2, os
 from t0mm0.common.net import Net
 from urlresolver import common
 from urlresolver.plugnplay.interfaces import UrlResolver
 from urlresolver.plugnplay.interfaces import PluginSettings
 from urlresolver.plugnplay import Plugin
-import urllib2
+from lib import unwise
+
+#SET ERROR_LOGO# THANKS TO VOINAGE, BSTRDMKR, ELDORADO & RESOLVING BY MIKEY1234
+error_logo = os.path.join(common.addon_path, 'resources', 'images', 'redx.png')
 
 class NowvideoResolver(Plugin, UrlResolver, PluginSettings):
     implements = [UrlResolver, PluginSettings]
@@ -32,61 +35,57 @@ class NowvideoResolver(Plugin, UrlResolver, PluginSettings):
         p = self.get_setting('priority') or 100
         self.priority = int(p)
         self.net = Net()
-        self.resolver_host = "www.nowvideo.eu"
 
     def get_media_url(self, host, media_id):
         web_url = self.get_url(host, media_id)
-        """ Human Verification """
         try:
-            self.net.http_HEAD(web_url)
             html = self.net.http_GET(web_url).content
-        except urllib2.URLError, e:
-            common.addon.log_error(self.name + ': got http error %d fetching %s' %
-                                  (e.code, web_url))
-            return False
-        ''' Parsing HTML '''
-        r = re.search('<param name="src" value="(.+?)"', html)
-        if r:
-            stream_url = r.group(1)
-        else:
-            message = self.name + ': 1st attempt at finding the stream_url failed'
-            common.addon.log_debug(message)
-            r = re.search('flashvars.filekey="(.+)"', html)
+            key = re.compile('flashvars.filekey=(.+?);').findall(html)
+            ip_key = key[0]
+            pattern = 'var %s="(.+?)".+?flashvars.file="(.+?)"'% str(ip_key)
+            r = re.search(pattern,html, re.DOTALL)
+            print 'find key: '+str(r)
             if r:
-                file_key = r.group(1)
-                player_url = 'http://' + self.resolver_host + '/api/player.api.php?user=undefined&key=' + file_key + '&pass=undefined&codes=1&file=' + media_id
-                try:
-                    html = self.net.http_GET(player_url).content
-                except urllib2.URLError, e:
-                    common.addon.log_error(self.name + ': got http error %d fetching %s' %
-                                        (e.code, web_url))
-                    return False
-                r = re.search('url=(.+?)&', html)
-                if r:
-                    stream_url = r.group(1)
-                else:
-                    message = self.name + ': attempt at finding the stream_url failed'
-                    common.addon.log_debug(message)
-                    return False
+                filekey, filename= r.groups()
+                print "FILEBLOBS=%s  %s"%(filename,filekey)
             else:
-                message = self.name + ': attempt at finding the filekey failed'
-                common.addon.log_debug(message)
-                return False
-        return stream_url
-
+                r = re.search('file no longer exists',html)
+                if r:
+                    raise Exception ('File Not Found or removed')
+            
+            #get stream url from api
+            api = 'http://www.nowvideo.sx/api/player.api.php?key=%s&file=%s' % (filekey, filename)
+            html = self.net.http_GET(api).content
+            r = re.search('url=(.+?)&title', html)
+            if r:
+                stream_url = urllib.unquote(r.group(1))
+            else:
+                r = re.search('file no longer exists',html)
+                if r:
+                    raise Exception ('File Not Found or removed')
+                raise Exception ('Failed to parse url')
+                
+            return stream_url
+        except urllib2.URLError, e:
+            common.addon.log_error('Nowvideo: got http error %d fetching %s' %
+                                    (e.code, web_url))
+            return self.unresolvable(code=3, msg=e)
+        except Exception, e:
+            common.addon.log_error('**** Nowvideo Error occured: %s' % e)
+            common.addon.show_small_popup(title='[B][COLOR white]NOWVIDEO[/COLOR][/B]', msg='[COLOR red]%s[/COLOR]' % e, delay=5000, image=error_logo)
+            return self.unresolvable(code=0, msg=e)
 
     def get_url(self, host, media_id):
-        return 'http://' + self.resolver_host + '/video/%s' % media_id
+        return 'http://embed.nowvideo.sx/embed.php?v=%s' % media_id
 
     def get_host_and_id(self, url):
-        r = re.search('//(.+?)/embed.php\?v=([^&]+?)&', url)
-        if not r:
-            r = re.search('//(.+?)/video/([0-9a-z]+)', url)
+        print url
+        r = re.search('((?:http://|www.|embed.)nowvideo.(?:eu|sx|ch))/(?:video/|embed.php\?v=)([0-9a-z]+)', url)
         if r:
             return r.groups()
         else:
             return False
 
     def valid_url(self, url, host):
-        return re.match('http://(?:www.|embed.)?nowvideo.eu/(?:embed.php|video/)',
-                        url) or self.name in host
+        if self.get_setting('enabled') == 'false': return False
+        return re.match('http://(www.|embed.)?nowvideo.(?:eu|sx|ch)/(video/|embed.php\?)(?:[0-9a-z]+|width)', url) or 'nowvideo' in host
