@@ -23,8 +23,9 @@ from urlresolver.plugnplay import Plugin
 import urllib2
 from urlresolver import common
 import xbmcgui
-import re
+import os,re
 
+error_logo = os.path.join(common.addon_path, 'resources', 'images', 'redx.png')
 
 class playedResolver(Plugin, UrlResolver, PluginSettings):
     implements = [UrlResolver, PluginSettings]
